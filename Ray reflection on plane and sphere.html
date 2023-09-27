@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Sphere and plane reflection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+</head>
+
+<body style="background-color: black;" onkeydown="realKeyMan(event);"
+    onkeyup="if(event.keyCode == currKey){currKey = -69; clearInterval(keyInterval);}">
+    <canvas id="c" width="1280" height="720"
+        style="border:5px solid #00FF00; position:absolute;top:50%;left:50%; transform: translate(-50%,-50%);height:90%;aspect-ratio: 16/9;image-rendering: pixelated;"></canvas>
+    <script>
+        alert("You can move and rotate around using WASDQE and the arrow keys.");
+        const angbounder = a => {
+            if (a >= Math.PI * 2) {
+                a -= Math.PI * 2;
+            }
+            else if (a < 0) {
+                a += Math.PI * 2;
+            }
+            return a;
+        }
+        const dot = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
+        const dist = (a, b) => Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2) + Math.pow(b[2] - a[2], 2));
+        const dist2D = (a, b) => Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2));
+        const vadd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+        const vsub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+        const vmul = (a, b) => [a[0] * b, a[1] * b, a[2] * b];
+        const vdiv = (a, b) => [a[0] / b, a[1] / b, a[2] / b];
+        const rotadd = 0.05;
+        const normalize = v => {
+            od = dist([0, 0, 0], v);
+            return [v[0] / od, v[1] / od, v[2] / od];
+        }
+        const normalize2D = v => {
+            od = dist2D([0, 0], v);
+            return [v[0] / od, v[1] / od];
+        }
+        eqarr = [{ a: 0.408248, b: 0.816497, c: 0.408248, d: 5 }, { a: 0.4285, b: 0.8571, c: -0.2857, d: 5 }];
+        rotVect = [0, -1, 0];
+        var eq3 = {};
+        const rotPoint = [0, 0, 0];
+        const moveSpeed = 0.2;
+        fovpower = 0.7;
+        const c = document.getElementById("c").getContext("2d");
+        c.fillStyle = "#00FF00";
+        c.strokeStyle = "#00FF00";
+        c.lineWidth = 1;
+        const shapes = [[]];
+        for (a = -0.9; a < 1; a += 0.3) {
+            curarr = [];
+            for (b = 0; b < Math.PI * 2; b += 0.3) {
+                currsz = Math.sqrt(1 - Math.pow(a, 2));
+                curarr.push([currsz * Math.cos(b), currsz * Math.sin(b), a]);
+            }
+            shapes[0].push(curarr);
+        }
+        for (a = 0; a < Math.PI; a += 0.3) {
+            curarr = [];
+            cosa = Math.cos(a);
+            sina = Math.sin(a);
+            for (b = 0; b < Math.PI * 2; b += 0.3) {
+                cosb = Math.cos(b);
+                curarr.push([cosb * cosa, cosb * sina, Math.sin(b)]);
+            }
+            shapes[0].push(curarr);
+        }
+        rvs = [];
+        shapes.push([[[7, 2, 5], [7, 2, 5]]]);
+        rvs.push(normalize(vsub([-0.2, 0.1, 0.6], shapes[1][0][0])));
+        shapes.push([[[-3.3, 7.57, -3], [-3.3, 7.57, -3]]]);
+        rvs.push(normalize(vsub([0.3, 0.1, 0.3], shapes[2][0][0])));
+        shapes.push([[[-4, -3, 5], [-4, -3, 5]]]);
+        shapes.push([[[-4.815866325, -1.632389794999999, 5.377463265], [2.3472755, -5.3058347, 5.1019449], [1.6127408, -6.77507552, -0.4083081599999998], [-5.61161225, -3.2240673499999994, -0.5919775500000002]]]);
+        var sm;
+        function updatesize() {
+            sm = 800 * Math.pow(fovpower, fovpower);
+        }
+        updatesize();
+        sm = 200;
+        refp = [9.532672814614056, -7.66252406812655, 1.8037825831178909];
+        var camPlaneDist = 3;
+        var eq = { a: 0.8094485826394531, b: -0.5871336399842931, c: 0.008190290701468867, d: -9.229907649859372 };
+        var eq2;
+        r3rv = normalize(vsub([-0.7, -4.5, 2], [-4, -3, 5]));
+        var n = [eq.a, eq.b, eq.c];
+        var tn = normalize([-1, -1, 2]);
+        var rn = normalize([-1, 1, 0]);
+        var nn = normalize(n);
+        var hnn; //horizontal nn
+        xyang = v2ToAng(normalize2D([nn[0], nn[1]]));
+        xyang += Math.PI / 2;
+        var startnum;
+        if (xyang >= Math.PI * 2) { xyang -= Math.PI * 2 };
+        rn[0] = Math.cos(xyang);
+        rn[1] = Math.sin(xyang);
+        temprn = normalize2D([nn[0], nn[1]]);
+        xval = dist2D([0, 0], [nn[0], nn[1]]);
+        yval = nn[2];
+        tempang = v2ToAng([xval, yval]);
+        tempang += Math.PI / 2;
+        if (tempang >= Math.PI * 2) { tempang -= Math.PI * 2; }
+        tn[2] = Math.sin(tempang);
+        tn[0] = Math.cos(tempang) * temprn[0];
+        tn[1] = Math.cos(tempang) * temprn[1];
+        nnsign0 = (eq.a > 0);
+        nnsign1 = (eq.b > 0);
+        //fixed faulty projection by new way of getting distance in such a way that distance is negative if point is behind plane.
+        const planedist = p => (-(eq.a * p[0] + eq.b * p[1] + eq.c * p[2]) - eq.d); //new method
+        const project = (p, dist) => [p[0] + (nn[0] * dist), p[1] + (nn[1] * dist), p[2] + (nn[2] * dist)];
+        const secondplanedist = p => (-(eq2.a * p[0] + eq2.b * p[1] + eq2.c * p[2]) - eq2.d);
+        const secondproject = (p, dist) => [p[0] + (hnn[0] * dist), p[1] + (hnn[1] * dist), p[2] + (hnn[2] * dist)];
+        const thirdplanedist = p => (-(eq3.a * p[0] + eq3.b * p[1] + eq3.c * p[2]) - eq3.d);
+        const thirdproject = (p, dist) => [p[0] + (eq3.a * dist), p[1] + (eq3.b * dist), p[2] + (eq3.c * dist)];
+        const generalproject = (p, planeq) => {
+            pdist = (-(planeq.a * p[0] + planeq.b * p[1] + planeq.c * p[2]) - planeq.d);
+            return [p[0] + (planeq.a * pdist), p[1] + (planeq.b * pdist), p[2] + (planeq.c * pdist)];
+        };
+        const generaldist = (p, planeq) => (-(planeq.a * p[0] + planeq.b * p[1] + planeq.c * p[2]) - planeq.d);
+        shapes[4].push([generalproject(shapes[4][0][0], eqarr[0]), generalproject(shapes[4][0][1], eqarr[0]), generalproject(shapes[4][0][2], eqarr[0]), generalproject(shapes[4][0][3], eqarr[0])]);
+        var currdist;
+        var planepoint = vadd(refp, [-nn[0] * camPlaneDist, -nn[1] * camPlaneDist, -nn[2] * camPlaneDist]);
+        eq.d = -((eq.a * planepoint[0]) + (eq.b * planepoint[1]) + (eq.c * planepoint[2]));
+        temprn = normalize2D([nn[0], nn[1]]);
+        isFlipped = false;
+        var invalid;
+        function v2ToAng(v) {
+            ang = Math.asin(v[1]);
+            if (v[0] < 0) {
+                ang = Math.PI - ang;
+            }
+            if (ang < 0) {
+                ang += Math.PI * 2;
+            }
+            return ang;
+        }
+        function calcMuls(p) {
+            pd = (planedist(p));
+            if (pd < 0) {
+                invalid = true;
+                return;
+            }
+            invalid = false;
+            currdist = pd;
+            pp = project(p, pd);
+            mp = [pp[0], pp[1], planepoint[2]];
+            hnn = normalize([nn[0], nn[1], 0]);
+            eq2 = { a: hnn[0], b: hnn[1], c: hnn[2] };
+            eq2.d = -((eq2.a * planepoint[0]) + (eq2.b * planepoint[1]) + (eq2.c * planepoint[2]));
+            mpplanedist = secondplanedist(mp);
+            mpp = secondproject(mp, mpplanedist);
+            amul = dist(mpp, planepoint);
+            dirv = normalize(vsub(mpp, planepoint));
+            if (dirv[0] > 0 != (rn[0] > 0) || ((dirv[1] > 0) != (rn[1] > 0))) {
+                amul = -amul;
+            }
+            bmul = vsub(pp, planepoint)[2] / tn[2];
+            bmul = -bmul;
+            if (isFlipped) amul = -amul;
+        }
+        function cycle() {
+            c.clearRect(0, 0, 1280, 720);
+            if ((nn[0] > 0) != nnsign0 || (nn[1] > 0) != nnsign1) {
+                isFlipped = true;
+            }
+            else isFlipped = false;
+            planepoint = vadd(refp, [-nn[0] * camPlaneDist, -nn[1] * camPlaneDist, -nn[2] * camPlaneDist]);
+            eq.d = -((eq.a * planepoint[0]) + (eq.b * planepoint[1]) + (eq.c * planepoint[2]));
+            for (ii = 0; ii < shapes.length; ii++) {
+                for (i = 0; i < shapes[ii].length; i++) {
+                    startnum = 1;
+                    shouldcontinue = true;
+                    calcMuls(shapes[ii][i][0]);
+                    if (invalid) {
+                        for (j = 1; j < shapes[ii][i].length; j++) {
+                            calcMuls(shapes[ii][i][1]);
+                            if (!invalid) {
+                                startnum = j;
+                                break;
+                            }
+                        }
+                        if (invalid) break;
+                    }
+                    c.beginPath();
+                    c.moveTo(640 + amul * sm / Math.pow(currdist, fovpower) + 100, 360 + bmul * sm / Math.pow(currdist, fovpower));
+                    for (j = startnum; j < shapes[ii][i].length; j++) {
+                        calcMuls(shapes[ii][i][j]);
+                        if (invalid) { continue; }
+                        c.lineTo(640 + amul * sm / Math.pow(currdist, fovpower) + 100, 360 + bmul * sm / Math.pow(currdist, fovpower));
+                        //c.lineTo(256 + (amul * sm), 256 + (bmul * sm));
+                        c.stroke();
+                    }
+                    calcMuls(shapes[ii][i][0]);
+                    c.lineTo(640 + amul * sm / Math.pow(currdist, fovpower) + 100, 360 + bmul * sm / Math.pow(currdist, fovpower));
+                    c.stroke();
+                }
+            }
+        }
+        //cycle();
+        var mainCycle = setInterval(cycle, 20);
+        var keyInterval;
+        var currKey = -69;
+        function realKeyMan(evt) {
+            if (evt.keyCode != currKey) {
+                clearInterval(keyInterval);
+                currKey = evt.keyCode;
+                keyInterval = setInterval(function () { keyMan(currKey); }, 20);
+            }
+        }
+        function keyMan(evt) {
+            kCode = evt;
+            if (isFlipped) {
+                if (kCode == 65) { kCode = 68; }
+                else if (kCode == 68) { kCode = 65; }
+            }
+            switch (kCode) {
+                case 65: //left
+                    refp = vsub(refp, [rn[0] * moveSpeed, rn[1] * moveSpeed, 0]);
+                    break;
+                case 68: //right
+                    refp = vadd(refp, [rn[0] * moveSpeed, rn[1] * moveSpeed, 0]);
+                    break;
+                case 87: //forward
+                    refp = vsub(refp, [nn[0] * moveSpeed, nn[1] * moveSpeed, nn[2] * moveSpeed]);
+                    break;
+                case 83: //backward
+                    refp = vadd(refp, [nn[0] * moveSpeed, nn[1] * moveSpeed, nn[2] * moveSpeed]);
+                    break;
+                case 81: //down
+                    refp = vsub(refp, [tn[0] * moveSpeed, tn[1] * moveSpeed, tn[2] * moveSpeed]);
+                    break;
+                case 69: //up
+                    refp = vadd(refp, [tn[0] * moveSpeed, tn[1] * moveSpeed, tn[2] * moveSpeed]);
+                    break;
+                default:
+                    rotCam(kCode);
+                    break;
+
+            }
+        }
+        function recal() {
+            nn = [eq.a, eq.b, eq.c];
+            xyang = v2ToAng(normalize2D([nn[0], nn[1]]));
+            xyang += Math.PI / 2;
+            if (xyang >= Math.PI * 2) { xyang -= Math.PI * 2 };
+            rn[0] = Math.cos(xyang);
+            rn[1] = Math.sin(xyang);
+            xval = dist2D([0, 0], [nn[0], nn[1]]);
+            if ((nn[0] > 0) != nnsign0 || (nn[1] > 0) != nnsign1) {
+                xval = -xval;
+            }
+            yval = nn[2];
+            tempang = v2ToAng([xval, yval]);
+            tempang += Math.PI / 2;
+            if (tempang >= Math.PI * 2) { tempang -= Math.PI * 2; }
+            tn[2] = Math.sin(tempang);
+            tn[0] = Math.cos(tempang) * temprn[0];
+            tn[1] = Math.cos(tempang) * temprn[1];
+        }
+        function rotCam(code) {
+            yortvdist = dist2D([0, 0], [eq.a, eq.b]);
+            yrotv = normalize2D([eq.a, eq.b]);
+            xrotv = normalize2D([eq.a, eq.c]);
+            if (isFlipped) {
+                if (code == 37) { code = 39; }
+                else if (code == 39) { code = 37; }
+            }
+            switch (code) {
+                case 37: //left
+                    currroty = v2ToAng(yrotv);
+                    yrotv = [Math.cos(currroty + rotadd) * yortvdist, Math.sin(currroty + rotadd) * yortvdist];
+                    eq.a = yrotv[0];
+                    eq.b = yrotv[1];
+                    nnsign0 = (eq.a > 0);
+                    nnsign1 = (eq.b > 0);
+                    if (isFlipped) { nnsign0 = !nnsign0; nnsign1 = !nnsign1; }
+                    if (!isFlipped) temprn = normalize2D([eq.a, eq.b]);
+                    else temprn = normalize2D([-eq.a, -eq.b]);
+                    recal();
+
+                    break;
+                case 39: //right
+                    currroty = v2ToAng(yrotv);
+                    yrotv = [Math.cos(currroty - rotadd) * yortvdist, Math.sin(currroty - rotadd) * yortvdist];
+                    eq.a = yrotv[0];
+                    eq.b = yrotv[1];
+                    nnsign0 = (eq.a > 0);
+                    nnsign1 = (eq.b > 0);
+                    if (isFlipped) { nnsign0 = !nnsign0; nnsign1 = !nnsign1; }
+                    if (!isFlipped) temprn = normalize2D([eq.a, eq.b]);
+                    else temprn = normalize2D([-eq.a, -eq.b]);
+                    recal();
+                    break;
+                case 38: //up
+                    xval = dist2D([0, 0], [nn[0], nn[1]]);
+                    if (isFlipped) {
+                        xval = -xval;
+                    }
+                    yval = nn[2];
+                    tempang = v2ToAng([xval, yval]);
+                    tempang -= rotadd;
+                    if (tempang >= Math.PI * 2) { tempang -= Math.PI * 2; }
+                    nn[2] = Math.sin(tempang);
+                    nn[0] = Math.cos(tempang) * temprn[0];
+                    nn[1] = Math.cos(tempang) * temprn[1];
+                    eq.a = nn[0];
+                    eq.b = nn[1];
+                    eq.c = nn[2];
+                    recal();
+                    break;
+                case 40: //down
+                    xval = dist2D([0, 0], [nn[0], nn[1]]);
+                    if (isFlipped) {
+                        xval = -xval;
+                    }
+                    yval = nn[2];
+                    tempang = v2ToAng([xval, yval]);
+                    tempang += rotadd;
+                    if (tempang >= Math.PI * 2) { tempang -= Math.PI * 2; }
+                    nn[2] = Math.sin(tempang);
+                    nn[0] = Math.cos(tempang) * temprn[0];
+                    nn[1] = Math.cos(tempang) * temprn[1];
+                    eq.a = nn[0];
+                    eq.b = nn[1];
+                    eq.c = nn[2];
+                    recal();
+                    break;
+            }
+        }
+        function ray1() {
+            if (dist([0, 0, 0], shapes[1][0][1]) <= 1) {
+                reflect(1);
+            }
+            else if (dist([0, 0, 0], shapes[1][0][1]) >= 9) {
+                clearInterval(ray1int);
+            }
+            shapes[1][0][1] = vadd(shapes[1][0][1], vmul(rvs[0], 0.1));
+        }
+        function ray2() {
+            if (dist([0, 0, 0], shapes[2][0][1]) <= 1) {
+                reflect(2);
+            }
+            else if (dist([0, 0, 0], shapes[2][0][1]) >= 9) {
+                clearInterval(ray2int);
+            }
+            shapes[2][0][1] = vadd(shapes[2][0][1], vmul(rvs[1], 0.1));
+        }
+        function ray3() {
+            state1 = generaldist(shapes[3][0][1], eqarr[0]) > 0;
+            state2 = generaldist(shapes[3][0][1], eqarr[1]) > 0;
+            shapes[3][0][1] = vadd(shapes[3][0][1], vmul(r3rv, 0.05));
+            if (state1 != generaldist(shapes[3][0][1], eqarr[0]) > 0) {
+                reflectPlane(0);
+            }
+            else if (state2 != generaldist(shapes[3][0][1], eqarr[1]) > 0) {
+                reflectPlane(1);
+            }
+        }
+        function reflect(ord) {
+            rv = rvs[ord - 1];
+            eq3.a = rv[0];
+            eq3.b = rv[1];
+            eq3.c = rv[2];
+            eq3.d = 0;
+            pp = thirdproject(shapes[ord][0][0], thirdplanedist(shapes[ord][0][0]));
+            currx = dist([0, 0, 0], pp);
+            curry = Math.sqrt(1 - Math.pow(currx, 2));
+            spherep = vadd(pp, vmul(rv, -curry)); //find sphere-line intersection point.
+            shapes[ord][0][1] = spherep;
+            eq3.a = spherep[0];
+            eq3.b = spherep[1];
+            eq3.c = spherep[2];
+            eq3.d = -(eq3.a * eq3.a + eq3.b * eq3.b + eq3.c * eq3.c);
+            pp = thirdproject(shapes[ord][0][0], thirdplanedist(shapes[ord][0][0]));
+            pdirv = normalize(vsub(spherep, pp));
+            eq3.a = pdirv[0];
+            eq3.b = pdirv[1];                                                     //reflection plane eq;
+            eq3.c = pdirv[2];
+            eq3.d = -(eq3.a * rv[0] + eq3.b * rv[1] + eq3.c * rv[2]);
+            midp = thirdproject([0, 0, 0], thirdplanedist([0, 0, 0]));
+            rv = vadd(rv, vmul(vsub(midp, rv), 2));
+            rvs[ord - 1] = rv;
+            shapes[ord].unshift([spherep, vadd(spherep, vmul(rv, 0.1))]);
+        }
+
+        function reflectPlane(planei) {
+            prp = generalproject(shapes[3][0][0], eqarr[planei]);
+            prpdist = generaldist(shapes[3][0][0], eqarr[planei]);
+            dist2 = generaldist(vadd(shapes[3][0][0], r3rv), eqarr[planei]);
+            distinc = prpdist - dist2;
+            intPoint = vadd(shapes[3][0][0], vmul(r3rv, prpdist / distinc)); //find line-plane intersection point. line is defined by point + normalized vector.
+            shapes[3][0][1] = intPoint;
+            planev = normalize(vsub(intPoint, prp));
+            eq3.a = planev[0];
+            eq3.b = planev[1];                                                    //reflection plane eq;
+            eq3.c = planev[2];
+            eq3.d = -(eq3.a * r3rv[0] + eq3.b * r3rv[1] + eq3.c * r3rv[2]);
+            midp = thirdproject([0, 0, 0], thirdplanedist([0, 0, 0]));
+            r3rv = vadd(r3rv, vmul(vsub(midp, r3rv), 2));
+            shapes[3].unshift([intPoint, vadd(intPoint, vmul(r3rv, 0.05))]);
+        }
+
+        ray1int = setInterval(ray1, 30);
+        ray2int = setInterval(ray2, 30);
+        ray3int = setInterval(ray3, 30);
+    </script>
+</body>
+
+</html>
